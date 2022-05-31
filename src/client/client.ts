@@ -1,7 +1,9 @@
-import * as Bezier from './Bazier';
+// import * as Bezier from './Bazier';
+import {Bazier } from './utils/Bazier'
 import * as THREE from 'three';
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Origin } from './utils/Origin';
 
 const generateButton = <HTMLButtonElement>(
   document.getElementById('generateButton')
@@ -10,6 +12,9 @@ const generateButton = <HTMLButtonElement>(
 const renderer = new THREE.WebGLRenderer();
 renderer.setClearColor('#202020');
 
+const origin = new Origin(10)
+const bazier = new Bazier();
+
 export const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   45,
@@ -17,54 +22,22 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.minDistance = 10;
 controls.maxDistance = 100;
 controls.target.set(0, 0, 0);
 controls.update();
 
-function drawXYZ(scene: THREE.Scene): void {
-  const arrowLength = 10;
-  const xPAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0xff0000
+function getFacingPoint(): THREE.Vector3 {
+  const fX = <HTMLInputElement>document.getElementById('cx');
+  const fY = <HTMLInputElement>document.getElementById('cy');
+  const fZ = <HTMLInputElement>document.getElementById('cz');
+  const controlPoint = new THREE.Vector3(
+    Number(fX?.value),
+    Number(fY?.value),
+    Number(fZ?.value)
   );
-  const yPAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0x00ff00
-  );
-  const zPAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0x0000ff
-  );
-
-  const xNAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(-1, 0, 0),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0xff0000
-  );
-  const yNAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(0, -1, 0),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0x00ff00
-  );
-  const zNAxis = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 0, -1),
-    new THREE.Vector3(0, 0, 0),
-    arrowLength,
-    0x0000ff
-  );
-
-  scene.add(xPAxis, yPAxis, zPAxis, xNAxis, yNAxis, zNAxis);
+  return controlPoint;
 }
 
 function getControlPoint(): THREE.Vector3 {
@@ -93,52 +66,18 @@ function getDataPoints(): THREE.Vector3[] {
 }
 
 function drawBezier() {
-  const pGroup = new THREE.Group();
+  bazier.clear(true)
+  bazier.addPoints(...getDataPoints())
+  bazier.setControlPoint(getControlPoint())
+  
   const material = new THREE.LineBasicMaterial({ color: 0xffffff });
-  const points = Bezier.getLineFromPoints(getDataPoints(), getControlPoint(), {
-    pCount: 1000,
-    res: 1
-  });
-
-  points.forEach((p) => {
-    const sphGeometry = new THREE.SphereGeometry(0.02);
-    const sphMaterial = new THREE.MeshBasicMaterial({ color: 0x4444ee });
-    const sphere = new THREE.Mesh(sphGeometry, sphMaterial);
-    sphere.translateX(p.x);
-    sphere.translateY(p.y);
-    sphere.translateZ(p.z);
-    pGroup.add(sphere);
-  });
-  scene.add(pGroup);
-
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const geometry = new THREE.BufferGeometry().setFromPoints(bazier.generate());
   const line = new THREE.Line(geometry, material);
 
+  scene.add(bazier.inputPointsGroup)
+  scene.add(bazier.controlPointsGroup)
+  scene.add(bazier.outputPointsGroup)
   scene.add(line);
-}
-
-function drawGrid() {
-  const material = new THREE.LineBasicMaterial({ color: 0xaaaaff });
-  const gridGroup = new THREE.Group();
-  for (let x = -10; x <= 10; x++) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x, 0, -10),
-      new THREE.Vector3(x, 0, 10)
-    ]);
-    const line = new THREE.Line(geometry, material);
-    gridGroup.add(line);
-  }
-
-  for (let z = -10; z <= 10; z++) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-10, 0, z),
-      new THREE.Vector3(10, 0, z)
-    ]);
-    const line = new THREE.Line(geometry, material);
-    gridGroup.add(line);
-  }
-
-  scene.add(gridGroup);
 }
 
 function animate() {
@@ -149,9 +88,8 @@ function animate() {
 
 function redraw() {
   scene.clear();
-  drawGrid();
-  drawXYZ(scene);
   drawBezier();
+  scene.add(origin.origin)
 }
 
 function onWindowResize() {
