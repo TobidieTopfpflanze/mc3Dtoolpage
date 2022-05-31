@@ -3,9 +3,11 @@ import * as THREE from 'three';
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const canvas = document.getElementById("tpRender") ?? undefined 
+const generateButton = <HTMLButtonElement>(
+  document.getElementById('generateButton')
+);
 
-const renderer = new THREE.WebGLRenderer({canvas});
+const renderer = new THREE.WebGLRenderer();
 renderer.setClearColor('#202020');
 
 export const scene = new THREE.Scene();
@@ -24,41 +26,80 @@ controls.update();
 
 function drawXYZ(scene: THREE.Scene): void {
   const arrowLength = 10;
-  const xAxis = new THREE.ArrowHelper(
+  const xPAxis = new THREE.ArrowHelper(
     new THREE.Vector3(1, 0, 0),
     new THREE.Vector3(0, 0, 0),
     arrowLength,
     0xff0000
   );
-  const yAxis = new THREE.ArrowHelper(
+  const yPAxis = new THREE.ArrowHelper(
     new THREE.Vector3(0, 1, 0),
     new THREE.Vector3(0, 0, 0),
     arrowLength,
     0x00ff00
   );
-  const zAxis = new THREE.ArrowHelper(
+  const zPAxis = new THREE.ArrowHelper(
     new THREE.Vector3(0, 0, 1),
     new THREE.Vector3(0, 0, 0),
     arrowLength,
     0x0000ff
   );
 
-  scene.add(xAxis, yAxis, zAxis);
+  const xNAxis = new THREE.ArrowHelper(
+    new THREE.Vector3(-1, 0, 0),
+    new THREE.Vector3(0, 0, 0),
+    arrowLength,
+    0xff0000
+  );
+  const yNAxis = new THREE.ArrowHelper(
+    new THREE.Vector3(0, -1, 0),
+    new THREE.Vector3(0, 0, 0),
+    arrowLength,
+    0x00ff00
+  );
+  const zNAxis = new THREE.ArrowHelper(
+    new THREE.Vector3(0, 0, -1),
+    new THREE.Vector3(0, 0, 0),
+    arrowLength,
+    0x0000ff
+  );
+
+  scene.add(xPAxis, yPAxis, zPAxis, xNAxis, yNAxis, zNAxis);
 }
 
-function drawTpCourve() {
-  const material = new THREE.LineBasicMaterial({ color: 0xffffff });
-  const points = Bezier.getLineFromPoints(
-    [
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(1, 0, 1),
-      new THREE.Vector3(2, 0, 2),
-      new THREE.Vector3(1, 1, 0)
-    ],
-    new THREE.Vector3(0, 1, 0.5),
-    { pCount: 50, res: 1 }
+function getControlPoint(): THREE.Vector3 {
+  const cX = <HTMLInputElement>document.getElementById('cx');
+  const cY = <HTMLInputElement>document.getElementById('cy');
+  const cZ = <HTMLInputElement>document.getElementById('cz');
+
+  const controlPoint = new THREE.Vector3(
+    Number(cX?.value),
+    Number(cY?.value),
+    Number(cZ?.value)
   );
+  return controlPoint;
+}
+
+function getDataPoints(): THREE.Vector3[] {
+  const points: THREE.Vector3[] = [];
+  const textinput =
+    <HTMLTextAreaElement>document.getElementById('inputCords') ?? undefined;
+  textinput?.value?.split('\n').map((line) => {
+    const [x, y, z] = line.split(' ').map((n) => Number(n));
+    points.push(new THREE.Vector3(x, y, z));
+  });
+
+  return points;
+}
+
+function drawBezier() {
   const pGroup = new THREE.Group();
+  const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+  const points = Bezier.getLineFromPoints(getDataPoints(), getControlPoint(), {
+    pCount: 1000,
+    res: 1
+  });
+
   points.forEach((p) => {
     const sphGeometry = new THREE.SphereGeometry(0.02);
     const sphMaterial = new THREE.MeshBasicMaterial({ color: 0x4444ee });
@@ -79,18 +120,18 @@ function drawTpCourve() {
 function drawGrid() {
   const material = new THREE.LineBasicMaterial({ color: 0xaaaaff });
   const gridGroup = new THREE.Group();
-  for (let x = 1; x <= 10; x++) {
+  for (let x = -10; x <= 10; x++) {
     const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x, 0, 0),
+      new THREE.Vector3(x, 0, -10),
       new THREE.Vector3(x, 0, 10)
     ]);
     const line = new THREE.Line(geometry, material);
     gridGroup.add(line);
   }
 
-  for (let z = 1; z <= 10; z++) {
+  for (let z = -10; z <= 10; z++) {
     const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, z),
+      new THREE.Vector3(-10, 0, z),
       new THREE.Vector3(10, 0, z)
     ]);
     const line = new THREE.Line(geometry, material);
@@ -110,7 +151,7 @@ function redraw() {
   scene.clear();
   drawGrid();
   drawXYZ(scene);
-  drawTpCourve();
+  drawBezier();
 }
 
 function onWindowResize() {
@@ -124,6 +165,7 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
   window.onresize = onWindowResize;
+  generateButton?.addEventListener('click', redraw);
 
   redraw();
   renderer.render(scene, camera);
