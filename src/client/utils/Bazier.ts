@@ -4,7 +4,7 @@ export class Bazier {
   private inputPoints: THREE.Vector3[] = [];
   public inputPointsGroup: THREE.Group = new THREE.Group();
 
-  private outputPoints: THREE.Vector3[] = [];
+  public outputPoints: THREE.Vector3[] = [];
   public outputPointsGroup: THREE.Group = new THREE.Group();
 
   private controlPointBase: THREE.Vector3 = new THREE.Vector3();
@@ -12,7 +12,7 @@ export class Bazier {
   public controlPointsGroup: THREE.Group = new THREE.Group();
 
   public scale: number = 1;
-  public sectionPCount: number = 100;
+  public sectionPCount: number = 150;
 
   private update: boolean = false;
 
